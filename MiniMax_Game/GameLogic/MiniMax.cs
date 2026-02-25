@@ -45,5 +45,30 @@ namespace MiniMax_Game.GameLogic
                 return minVal;
             }
         }
+
+        public static GameNode GetBestMove(GameNode root, int computerPlayer)
+        {
+            NodesGenerated = 0;
+            NodesEvaluated = 0;
+
+            GameEngine.GenerateTree(root, GameEngine.MaxDepth);
+
+            GameNode bestChild = null;
+            int bestValue = int.MinValue;
+
+            foreach (var child in root.Children)
+            {
+                int val = Minimax(child, computerPlayer);
+
+                if (val > bestValue)
+                {
+                    bestValue = val;
+                    bestChild = child;
+                }
+            }
+            Console.WriteLine("Hello_World");
+
+            return bestChild;
+        }
     }
 }
