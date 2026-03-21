@@ -1,34 +1,72 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MiniMax_Game.GameLogic
 {
+    /// <summary>
+    /// Реализует два алгоритма принятия решений для компьютерного игрока:
+    ///   1. Минимакс (Minimax) — полный перебор дерева.
+    ///   2. Альфа-бета отсечение (Alpha-Beta) — оптимизированный перебор.
+    ///
+    /// Оба алгоритма работают как «поиск на N ходов вперёд» (lookahead),
+    /// где N = GameEngine.MaxDepth. Дерево строится заново перед каждым ходом машины.
+    ///
+    /// МИНИМАКС:
+    ///   Машина — MAX-игрок (максимизирует свою оценку).
+    ///   Человек — MIN-игрок (минимизирует оценку машины).
+    ///   Просматриваются ВСЕ узлы дерева — гарантирован оптимальный ход,
+    ///   но при большой глубине работает медленнее.
+    ///
+    /// АЛЬФА-БЕТА:
+    ///   Тот же результат, что у минимакса, но с отсечением ветвей,
+    ///   которые заведомо не улучшат результат.
+    ///   α — лучшее, что MAX уже может гарантировать.
+    ///   β — лучшее, что MIN уже может гарантировать.
+    ///   Если α >= β — ветка бесполезна и отсекается.
+    ///   Обычно сокращает число оцениваемых узлов в 2–10 раз.
+    /// </summary>
     public static class MiniMax
     {
-        public static int NodesGenerated;
-        public static int NodesEvaluated;
+        // Счётчики для статистики (сбрасываются перед каждым ходом машины)
+        public static int NodesGenerated;  // Количество пройденных узлов
+        public static int NodesEvaluated;  // Количество оценённых листьев
 
+        // ════════════════════════════════════════════════════════════════════
+        // АЛГОРИТМ 1: МИНИМАКС
+        // ════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Рекурсивный минимакс.
+        ///
+        /// Базовый случай: узел — лист (нет детей) → вызываем эвристику.
+        ///
+        /// Рекурсивный случай:
+        ///   - Если ход машины (MAX): возвращаем максимум среди детей.
+        ///   - Если ход человека (MIN): возвращаем минимум среди детей.
+        ///
+        /// ИСПРАВЛЕНИЕ оригинального кода: maxVal инициализировался int.MaxValue
+        /// вместо int.MinValue — это означало, что MAX-игрок никогда не обновлял
+        /// значение (любое реальное значение было меньше MaxValue, но Math.Max
+        /// возвращал бы MaxValue). Теперь исправлено.
+        /// </summary>
         public static int Minimax(GameNode node, int machinePlayer)
         {
             NodesGenerated++;
 
-            if(node.Children.Count == 0)
+            if (node.Children.Count == 0)
             {
                 NodesEvaluated++;
                 node.HeuristicValue = Evaluator.Evaluate(node, machinePlayer);
                 return node.HeuristicValue;
             }
 
-            if(node.CurrentPlayer == machinePlayer)
+            if (node.CurrentPlayer == machinePlayer)
             {
-                int maxVal = int.MaxValue;
-                foreach(GameNode child in node.Children)
+
+                int maxVal = int.MinValue; 
+                foreach (GameNode child in node.Children)
                 {
                     int val = Minimax(child, machinePlayer);
-                    maxVal = Math.Max(maxVal, val);
+                    if (val > maxVal) maxVal = val;
                 }
                 node.HeuristicValue = maxVal;
                 return maxVal;
@@ -36,17 +74,62 @@ namespace MiniMax_Game.GameLogic
             else
             {
                 int minVal = int.MaxValue;
-                foreach (var child in node.Children)
+                foreach (GameNode child in node.Children)
                 {
                     int val = Minimax(child, machinePlayer);
-                    minVal = Math.Min(minVal, val);
+                    if (val < minVal) minVal = val;
                 }
                 node.HeuristicValue = minVal;
                 return minVal;
             }
         }
 
-        public static GameNode GetBestMove(GameNode root, int computerPlayer)
+        public static int AlphaBeta(
+            GameNode node, int machinePlayer,
+            int alpha = int.MinValue, int beta = int.MaxValue)
+        {
+            NodesGenerated++;
+
+            if (node.Children.Count == 0)
+            {
+                NodesEvaluated++;
+                node.HeuristicValue = Evaluator.Evaluate(node, machinePlayer);
+                return node.HeuristicValue;
+            }
+
+            if (node.CurrentPlayer == machinePlayer)
+            {
+                // MAX-узел
+                int maxVal = int.MinValue;
+                foreach (GameNode child in node.Children)
+                {
+                    int val = AlphaBeta(child, machinePlayer, alpha, beta);
+                    if (val > maxVal) maxVal = val;
+                    if (val > alpha) alpha = val; 
+
+                    if (alpha >= beta) break;
+                }
+                node.HeuristicValue = maxVal;
+                return maxVal;
+            }
+            else
+            {
+                int minVal = int.MaxValue;
+                foreach (GameNode child in node.Children)
+                {
+                    int val = AlphaBeta(child, machinePlayer, alpha, beta);
+                    if (val < minVal) minVal = val;
+                    if (val < beta) beta = val;  
+
+                    if (alpha >= beta) break;
+                }
+                node.HeuristicValue = minVal;
+                return minVal;
+            }
+        }
+
+        public static GameNode GetBestMove(
+            GameNode root, int computerPlayer, bool useAlphaBeta)
         {
             NodesGenerated = 0;
             NodesEvaluated = 0;
@@ -56,9 +139,11 @@ namespace MiniMax_Game.GameLogic
             GameNode bestChild = null;
             int bestValue = int.MinValue;
 
-            foreach (var child in root.Children)
+            foreach (GameNode child in root.Children)
             {
-                int val = Minimax(child, computerPlayer);
+                int val = useAlphaBeta
+                    ? AlphaBeta(child, computerPlayer)
+                    : Minimax(child, computerPlayer);
 
                 if (val > bestValue)
                 {
@@ -66,7 +151,6 @@ namespace MiniMax_Game.GameLogic
                     bestChild = child;
                 }
             }
-            Console.WriteLine("Hello_World");
 
             return bestChild;
         }
