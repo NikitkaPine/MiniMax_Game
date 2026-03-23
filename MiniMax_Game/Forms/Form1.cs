@@ -14,7 +14,7 @@ namespace MiniMax_Game
     ///   - Human move handling (x3 / x4 / x5 buttons)
     ///   - Triggering the computer move via timer
     ///   - Tracking experiment statistics
-    ///   - Determining and displaying the winner
+    ///   - Determining and  displaying the winner
     /// </summary>
     public partial class Form1 : Form
     {
@@ -27,6 +27,9 @@ namespace MiniMax_Game
         private int computerPlayer;   // Player number assigned to the computer
         private bool gameActive;       // True while a game is in progress
         private bool useAlphaBeta;     // True = Alpha-Beta, False = plain Minimax
+        private int currentStreak;     // Tracks consecutive even/odd moves for the streak rule
+        private int currentEndOption;  // The target number to reach (8000, 10000, or 15000)
+
 
         // ── Experiment tracking ──────────────────────────────────────────────
         private List<ExperimentResult> experiments = new List<ExperimentResult>();
@@ -62,8 +65,10 @@ namespace MiniMax_Game
         {
             int startNumber = (int)numStartNumber.Value;
 
+            int endOption = GetSelectedEndOption();
             // The player who moves first is always Player 1.
             // This matters for winner determination (even final = Player 1 wins).
+
             if (rbHumanFirst.Checked)
             {
                 humanPlayer = 1;
@@ -79,11 +84,14 @@ namespace MiniMax_Game
             currentNumber = startNumber;
             currentScore = 0;
             currentBank = 0;
+            currentStreak = 0;
+            currentEndOption = endOption;
             currentPlayer = 1; // Player 1 always moves first
             gameActive = true;
 
             lstMoveLog.Items.Clear();
             LogMove("Game started. Number: " + currentNumber +
+                    "  |  End at: " + endOption +
                     "  |  First move: " + (currentPlayer == humanPlayer ? "Human" : "Computer"));
 
             UpdateUI();
@@ -91,6 +99,13 @@ namespace MiniMax_Game
             // If the computer goes first, trigger its move via timer
             if (currentPlayer == computerPlayer)
                 computerMoveTimer.Start();
+        }
+
+        private int GetSelectedEndOption()
+        {
+            if(rb10000.Checked) return 10000;
+            if(rb15000.Checked) return 15000;
+            return 8000; // Default
         }
 
         // ────────────────────────────────────────────────────────────────────
@@ -133,7 +148,9 @@ namespace MiniMax_Game
                 number: currentNumber,
                 score: currentScore,
                 bank: currentBank,
-                currentPlayer: computerPlayer);
+                currentPlayer: computerPlayer,
+                streak: currentStreak,
+                endOptions: currentEndOption);
 
             Stopwatch sw = Stopwatch.StartNew();
             GameNode bestMove = MiniMax.GetBestMove(root, computerPlayer, useAlphaBeta);
@@ -166,8 +183,8 @@ namespace MiniMax_Game
         /// </summary>
         private void ApplyMove(int multiplier, string playerName)
         {
-            var (newNumber, newScore, newBank) =
-                GameEngine.DoMove(currentNumber, currentScore, currentBank, multiplier);
+            var (newNumber, newScore, newBank, newStreak) =
+                GameEngine.DoMove(currentNumber, currentScore, currentBank, multiplier,currentStreak);
 
             // Build log line
             string logLine = playerName + ": " + currentNumber + " x" + multiplier + " = " + newNumber;
@@ -176,13 +193,23 @@ namespace MiniMax_Game
             int ld = newNumber % 10;
             if (ld == 0 || ld == 5) logLine += "  [bank +1]";
 
+            if(newStreak == 0 && currentStreak == 2)
+            {
+                logLine += "  [3 even streak: score -1]";
+            }
+            else if(newStreak == 0 && currentStreak == -2)
+            {
+                logLine += "  [3 odd streak: score +1]";
+            }
+
             currentNumber = newNumber;
             currentScore = newScore;
             currentBank = newBank;
+            currentStreak = newStreak;
 
             LogMove(logLine);
 
-            if (currentNumber >= 3000)
+            if (currentNumber >= currentEndOption)
             {
                 int winner = GameEngine.GetWinner(currentScore, currentBank);
                 EndGame(winner);

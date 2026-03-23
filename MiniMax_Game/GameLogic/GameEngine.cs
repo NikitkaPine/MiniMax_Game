@@ -7,16 +7,19 @@ namespace MiniMax_Game.GameLogic
     {
         public static readonly int[] Multipliers = { 3, 4, 5 };
 
-        public const int MaxDepth = 7;
+        public const int MaxDepth = 3;
 
-        public static (int newNumber, int newScore, int newBank) DoMove(
-            int number, int score, int bank, int multiplier)
+        public static readonly int[] EndOptions = { 8000, 10000, 15000 };
+        public static (int newNumber, int newScore, int newBank,int newStreak) DoMove(
+            int number, int score, int bank, int multiplier,int streak)
         {
             int newNumber = number * multiplier;
             int newScore = score;
             int newBank = bank;
 
-            if (newNumber % 2 == 0)
+            bool isEven = (newNumber % 2 == 0);
+                
+            if(isEven) 
                 newScore += 1;
             else
                 newScore -= 1;
@@ -25,7 +28,29 @@ namespace MiniMax_Game.GameLogic
             if (lastDigit == 0 || lastDigit == 5)
                 newBank += 1;
 
-            return (newNumber, newScore, newBank);
+            int newStreak;
+            if (isEven)
+            {
+                newStreak = (streak >= 0) ? streak + 1 : 1;
+            }
+            else 
+            { 
+                newStreak = (streak <= 0) ? streak - 1 : -1;
+            }
+
+            if(newStreak == 3)
+            {
+                newNumber -= 1;
+                newStreak = 0;
+            }
+            else if(newStreak == -3)
+            {
+                newNumber += 1;
+                newStreak = 0;
+            }
+
+
+            return (newNumber, newScore, newBank,newStreak);
         }
 
         public static void GenerateTree(GameNode gameNode, int maxDepth)
@@ -37,8 +62,8 @@ namespace MiniMax_Game.GameLogic
 
             foreach (int multiplier in Multipliers)
             {
-                var (newNumber, newScore, newBank) = DoMove(
-                    gameNode.Number, gameNode.Score, gameNode.Bank, multiplier);
+                var (newNumber, newScore, newBank,newStreak) = DoMove(
+                    gameNode.Number, gameNode.Score, gameNode.Bank, multiplier,gameNode.StreakChecker);
 
                 GameNode child = new GameNode(
                     number: newNumber,
@@ -47,7 +72,9 @@ namespace MiniMax_Game.GameLogic
                     currentPlayer: nextPlayer,
                     moveWeight: multiplier,
                     depth: gameNode.Depth + 1,
-                    parent: gameNode);
+                    parent: gameNode,
+                    streak:newStreak,
+                    endOptions: gameNode.EndOptions);
 
                 gameNode.Children.Add(child);
 

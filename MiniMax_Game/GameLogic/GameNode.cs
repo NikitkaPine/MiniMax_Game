@@ -19,6 +19,10 @@ namespace MiniMax_Game.GameLogic
         public bool IsTerminal;
         public int HeuristicValue;
 
+        public int StreakChecker;
+
+        public int EndOptions;
+
         public List<GameNode> Children = new List<GameNode>();
         public GameNode Parent;
 
@@ -29,7 +33,9 @@ namespace MiniMax_Game.GameLogic
             int currentPlayer, 
             int moveWeight = 0,         
             int depth = 0,
-            GameNode parent = null
+            GameNode parent = null,
+            int streak = 0,
+            int endOptions = 8000
         )
         {
             Number = number;
@@ -40,7 +46,9 @@ namespace MiniMax_Game.GameLogic
             Depth = depth;
             Children = new List<GameNode>();
             Parent = parent;
-            IsTerminal = number >= 3000;
+            StreakChecker = streak;
+            EndOptions = endOptions;
+            IsTerminal = number >= EndOptions;
         }
     }
 }
