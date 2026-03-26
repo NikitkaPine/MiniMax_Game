@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -88,6 +88,10 @@ namespace MiniMax_Game
             currentEndOption = endOption;
             currentPlayer = 1; // Player 1 always moves first
             gameActive = true;
+
+            // Reset accumulated node statistics for a fresh game run
+            totalNodesGenerated = 0;
+            totalNodesEvaluated = 0;
 
             lstMoveLog.Items.Clear();
             LogMove("Game started. Number: " + currentNumber +
