@@ -7,34 +7,22 @@ using MiniMax_Game.GameLogic;
 
 namespace MiniMax_Game
 {
-    /// <summary>
-    /// Main game form. Manages the entire game flow:
-    ///   - Initial setup (who goes first, algorithm, starting number)
-    ///   - Displaying current state
-    ///   - Human move handling (x3 / x4 / x5 buttons)
-    ///   - Triggering the computer move via timer
-    ///   - Tracking experiment statistics
-    ///   - Determining and  displaying the winner
-    /// </summary>
+
     public partial class Form1 : Form
     {
-        // ── Current game state ───────────────────────────────────────────────
-        private int currentNumber;    // The active number in the game
-        private int currentScore;     // Shared score (can be negative)
-        private int currentBank;      // Bank points (applied at game end)
-        private int currentPlayer;    // Whose turn it is right now (1 or 2)
-        private int humanPlayer;      // Player number assigned to the human
-        private int computerPlayer;   // Player number assigned to the computer
-        private bool gameActive;       // True while a game is in progress
-        private bool useAlphaBeta;     // True = Alpha-Beta, False = plain Minimax
-        private int currentStreak;     // Tracks consecutive even/odd moves for the streak rule
-        private int currentEndOption;  // The target number to reach (8000, 10000, or 15000)
+        private int currentNumber;   
+        private int currentScore;    
+        private int currentBank;     
+        private int currentPlayer;    
+        private int humanPlayer;      
+        private int computerPlayer;  
+        private bool gameActive;      
+        private bool useAlphaBeta;     
+        private int currentStreak;     
+        private int currentEndOption;  
 
-
-        // ── Experiment tracking ──────────────────────────────────────────────
         private List<ExperimentResult> experiments = new List<ExperimentResult>();
 
-        // ── Timer — gives the UI a frame to repaint before the AI move ───────
         private System.Windows.Forms.Timer computerMoveTimer;
 
         public Form1()
@@ -44,30 +32,18 @@ namespace MiniMax_Game
             UpdateUI();
         }
 
-        // ────────────────────────────────────────────────────────────────────
-        // INITIALISATION
-        // ────────────────────────────────────────────────────────────────────
-
         private void InitTimer()
         {
-            // A short delay lets the form repaint (showing "Computer thinking...")
-            // before the AI calculation blocks the UI thread.
             computerMoveTimer = new System.Windows.Forms.Timer();
             computerMoveTimer.Interval = 400;
             computerMoveTimer.Tick += ComputerMoveTimer_Tick;
         }
-
-        // ────────────────────────────────────────────────────────────────────
-        // START GAME
-        // ────────────────────────────────────────────────────────────────────
 
         private void btnStart_Click(object sender, EventArgs e)
         {
             int startNumber = (int)numStartNumber.Value;
 
             int endOption = GetSelectedEndOption();
-            // The player who moves first is always Player 1.
-            // This matters for winner determination (even final = Player 1 wins).
 
             if (rbHumanFirst.Checked)
             {
@@ -108,42 +84,28 @@ namespace MiniMax_Game
             return 8000; // Default
         }
 
-        // ────────────────────────────────────────────────────────────────────
-        // HUMAN MOVE
-        // ────────────────────────────────────────────────────────────────────
-
         private void btnMul3_Click(object sender, EventArgs e) => HumanMove(3);
         private void btnMul4_Click(object sender, EventArgs e) => HumanMove(4);
         private void btnMul5_Click(object sender, EventArgs e) => HumanMove(5);
 
-        /// <summary>
-        /// Applies the human's chosen multiplier move.
-        /// If the game continues, hands control to the computer via timer.
-        /// </summary>
         private void HumanMove(int multiplier)
         {
             if (!gameActive || currentPlayer != humanPlayer) return;
 
             ApplyMove(multiplier, "Human");
 
-            if (!gameActive) return; // Game ended on this move
+            if (!gameActive) return;
 
             currentPlayer = computerPlayer;
             UpdateUI();
             computerMoveTimer.Start();
         }
 
-        // ────────────────────────────────────────────────────────────────────
-        // COMPUTER MOVE (fired by timer)
-        // ────────────────────────────────────────────────────────────────────
-
         private void ComputerMoveTimer_Tick(object sender, EventArgs e)
         {
             computerMoveTimer.Stop();
             if (!gameActive) return;
 
-            // Build the root node from the current game state.
-            // CurrentPlayer = computerPlayer because it is the computer's turn now.
             GameNode root = new GameNode(
                 number: currentNumber,
                 score: currentScore,
@@ -158,7 +120,6 @@ namespace MiniMax_Game
 
             if (bestMove == null)
             {
-                // Should not happen in normal play, but guard against it
                 EndGame(-1);
                 return;
             }
@@ -173,14 +134,6 @@ namespace MiniMax_Game
             UpdateUI();
         }
 
-        // ────────────────────────────────────────────────────────────────────
-        // APPLY MOVE (shared logic for both players)
-        // ────────────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Computes the result of multiplying by the given factor,
-        /// updates game state, writes to the log, and checks for game end.
-        /// </summary>
         private void ApplyMove(int multiplier, string playerName)
         {
             var (newNumber, newScore, newBank, newStreak) =
@@ -216,13 +169,6 @@ namespace MiniMax_Game
             }
         }
 
-        // ────────────────────────────────────────────────────────────────────
-        // END GAME
-        // ────────────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Finalises the game, determines the winner, updates experiment log.
-        /// </summary>
         private void EndGame(int winnerPlayer)
         {
             gameActive = false;
@@ -267,28 +213,19 @@ namespace MiniMax_Game
                 MessageBoxIcon.Information);
         }
 
-        // ────────────────────────────────────────────────────────────────────
-        // UPDATE UI
-        // ────────────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Synchronises all UI controls with the current game state.
-        /// Called after every state change.
-        /// </summary>
+    
         private void UpdateUI()
         {
-            // Settings panel and Start button are only available before the game
+           
             bool setup = !gameActive;
             grpSettings.Enabled = setup;
             btnStart.Enabled = setup;
 
-            // Multiply buttons are only active on the human's turn
             bool humanTurn = gameActive && currentPlayer == humanPlayer;
             btnMul3.Enabled = humanTurn;
             btnMul4.Enabled = humanTurn;
             btnMul5.Enabled = humanTurn;
 
-            // State indicators
             lblNumber.Text = "Current number: " + (gameActive ? currentNumber.ToString() : "-");
             lblScore.Text = "Score: " + currentScore;
             lblBank.Text = "Bank: " + currentBank;
@@ -300,24 +237,17 @@ namespace MiniMax_Game
             else
                 lblTurn.Text = "Computer thinking...";
 
-            // Colour feedback for current turn
             lblTurn.ForeColor = !gameActive ? Color.Gray
                               : currentPlayer == humanPlayer ? Color.FromArgb(0, 190, 110)
                                                                    : Color.FromArgb(220, 120, 30);
         }
 
-        // ────────────────────────────────────────────────────────────────────
-        // STATISTICS
-        // ────────────────────────────────────────────────────────────────────
-
+       
         private double totalComputerTime;
         private int totalComputerMoves;
         private int totalNodesGenerated;
         private int totalNodesEvaluated;
 
-        /// <summary>
-        /// Records statistics for one computer move and updates the stats label.
-        /// </summary>
         private void RecordStats(double seconds, int generated, int evaluated)
         {
             totalComputerTime += seconds;
@@ -352,10 +282,6 @@ namespace MiniMax_Game
                 "Total nodes eval: " + totalNodesEvaluated;
         }
 
-        // ────────────────────────────────────────────────────────────────────
-        // HELPERS
-        // ────────────────────────────────────────────────────────────────────
-
         private void LogMove(string text)
         {
             lstMoveLog.Items.Add(text);
@@ -374,7 +300,6 @@ namespace MiniMax_Game
             UpdateUI();
         }
 
-        // ── Experiment record ─────────────────────────────────────────────────
         private class ExperimentResult
         {
             public int Number;
