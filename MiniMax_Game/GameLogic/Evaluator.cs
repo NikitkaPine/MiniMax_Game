@@ -21,7 +21,7 @@ namespace MiniMax_Game.GameLogic
             int projectedWinner = GameEngine.GetWinner(node.Score, node.Bank);
             h += (projectedWinner == machinePlayer) ? 30 : -30;
 
-            double proximity = (double)node.Number / 3000.0;
+            double proximity = (double)node.Number / node.EndOptions;
             if (proximity > 1.0) proximity = 1.0;
             h += (int)(proximity * 20);
 
